@@ -19,7 +19,7 @@ import nuscenes
 from ..generic_dataset import GenericDataset
 from utils.ddd_utils import compute_box_3d, project_to_image
 
-class nuScenes(GenericDataset):
+class Lyft(GenericDataset):
   # change default resolution
   # default_resolution = [448, 800]
   default_resolution = [900, 1600]
@@ -59,7 +59,7 @@ class nuScenes(GenericDataset):
         'annotations', '{}{}.json').format(opt.dataset_version, split_name)
 
     self.images = None
-    super(nuScenes, self).__init__(opt, split, ann_path, img_dir)
+    super(Lyft, self).__init__(opt, split, ann_path, img_dir)
 
     self.alpha_in_degree = False    
     self.num_samples = len(self.images)

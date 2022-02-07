@@ -128,6 +128,34 @@ nuScenes is used for training and evaluating 3D object tracking. We also used nu
 
 - Run `python convert_kitti_to_coco.py` in `tools` to convert the annotation into COCO format. It will create `train.json`, `val.json`, `test.json` under `data/nuscenes/annotations`. nuScenes API is required for running the data preprocessing.
 
+### nuScenes
+
+nuScenes is used for training and evaluating 3D object tracking. We also used nuScenes for pretraining KITTI models.
+
+- Download the dataset from [Lyft website or Kaggle](https://www.nuscenes.org/download). You only need to download the "Keyframe blobs", and only need the images data. You also need to download the maps and all metadata to make the nuScenes API happy.
+
+- Unzip, rename, and place (or symlink) the data as below. You will need to merge folders from different zip files.
+
+  ~~~
+  ${CenterTrack_ROOT}
+  |-- data
+  `-- |-- lyft
+      `-- |-- v1.0-trainval
+          |   |-- samples
+          |   |   |-- CAM_BACK
+          |   |   |   | -- xxx.jpg
+          |   |   |-- CAM_BACK_LEFT
+          |   |   |-- CAM_BACK_RIGHT
+          |   |   |-- CAM_FRONT
+          |   |   |-- CAM_FRONT_LEFT
+          |   |   |-- CAM_FRONT_RIGHT
+          |-- |-- maps
+          `-- |-- v1.0-trainval_meta
+  ~~~
+
+- Run `python convert_kitti_to_coco.py` in `tools` to convert the annotation into COCO format. It will create `train.json`, `val.json`, `test.json` under `data/nuscenes/annotations`. nuScenes API is required for running the data preprocessing.
+
+
 ### CrowdHuman
 
 CrowdHuman is used for pretraining the MOT model. Only the training set is used.
@@ -137,6 +165,7 @@ CrowdHuman is used for pretraining the MOT model. Only the training set is used.
 - Unzip and place (or symlink) the data as below. You will need to merge folders from different zip files.
 
   ~~~
+  
   ${CenterTrack_ROOT}
   |-- data
   `-- |-- crowdhuman

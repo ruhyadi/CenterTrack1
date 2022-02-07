@@ -1,4 +1,5 @@
 # Copyright (c) Xingyi Zhou. All Rights Reserved
+# Edited Didi Ruhyadi. github.com/ruhyadi
 '''
 nuScenes pre-processing script.
 This file convert the nuScenes annotation into COCO format.
@@ -9,8 +10,13 @@ import numpy as np
 import cv2
 import copy
 import matplotlib.pyplot as plt
+
+from lyft_dataset_sdk.lyftdataset import LyftDataset
+from lyft_dataset_sdk.utils.geometry_utils import BoxVisibility, transform_matrix
+
 from nuscenes.nuscenes import NuScenes
 from nuscenes.utils.geometry_utils import BoxVisibility, transform_matrix
+
 from nuScenes_lib.utils_kitti import KittiDB
 from nuscenes.eval.detection.utils import category_to_detection_name
 from pyquaternion import Quaternion
@@ -19,24 +25,37 @@ import _init_paths
 from utils.ddd_utils import compute_box_3d, project_to_image, alpha2rot_y
 from utils.ddd_utils import draw_box_3d, unproject_2d_to_3d
 
-DATA_PATH = '../../data/nuscenes/'
+DATA_PATH = '../../data/lyft/'
 OUT_PATH = DATA_PATH + 'annotations/'
-SPLITS = {'val': 'v1.0-trainval', 'train': 'v1.0-trainval', 'test': 'v1.0-test'}
+# SPLITS can be just 'data' or 'train_data'
+SPLITS = {'val': 'train_data', 'train': 'train_data', 'test': 'test_data'}
 DEBUG = False
-CATS = ['car', 'truck', 'bus', 'trailer', 'construction_vehicle', 
-                   'pedestrian', 'motorcycle', 'bicycle',
-                   'traffic_cone', 'barrier']
 
-SENSOR_ID = {'RADAR_FRONT': 7, 'RADAR_FRONT_LEFT': 9, 
-  'RADAR_FRONT_RIGHT': 10, 'RADAR_BACK_LEFT': 11, 
-  'RADAR_BACK_RIGHT': 12,  'LIDAR_TOP': 8, 
-  'CAM_FRONT': 1, 'CAM_FRONT_RIGHT': 2, 
-  'CAM_BACK_RIGHT': 3, 'CAM_BACK': 4, 'CAM_BACK_LEFT': 5,
-  'CAM_FRONT_LEFT': 6}
+# lyft categories 
+CATS = ['car', 'pedestrian', 'animal', 'other_vehicle', 'bus',
+        'motorcycle', 'truck', 'emergency_vehicle', 'bicycle']
 
-USED_SENSOR = ['CAM_FRONT', 'CAM_FRONT_RIGHT', 
-  'CAM_BACK_RIGHT', 'CAM_BACK', 'CAM_BACK_LEFT',
-  'CAM_FRONT_LEFT']
+# SENSOR ID = SENSOR + 1, see sensor.json from dataset
+SENSOR_ID = {
+  'CAMERA_FRONT_LEFT': 1,
+  'LIDAR_FRONT_LEFT': 2,
+  'CAMERA_FRONT': 3,
+  'LIDAR_TOP': 4,
+  'CAMERA_BACK_LEFT': 5,
+  'LIDAR_FRONT_RIGHT': 6,
+  'CAMERA_BACK': 7,
+  'CAMERA_BACK_RIGHT': 8,
+  'CAMERA_FRONT_ZOOMED': 9,
+  'CAMERA_FRONT_RIGHT': 10
+  }
+
+USED_SENSOR = [
+  'CAMERA_FRONT_LEFT',
+  'CAMERA_FRONT_RIGHT',
+  'CAMERA_FRONT',
+  'CAMERA_BACK_LEFT',
+  'CAMERA_BACK_RIGHT'
+]
 
 CAT_IDS = {v: i + 1 for i, v in enumerate(CATS)}
 
@@ -58,12 +77,28 @@ def _bbox_inside(box1, box2):
   return box1[0] > box2[0] and box1[0] + box1[2] < box2[0] + box2[2] and \
          box1[1] > box2[1] and box1[1] + box1[3] < box2[1] + box2[3] 
 
+# ATTRIBUTE + 1 from ATTRIBUTE in json
 ATTRIBUTE_TO_ID = {
-  '': 0, 'cycle.with_rider' : 1, 'cycle.without_rider' : 2,
-  'pedestrian.moving': 3, 'pedestrian.standing': 4, 
-  'pedestrian.sitting_lying_down': 5,
-  'vehicle.moving': 6, 'vehicle.parked': 7, 
-  'vehicle.stopped': 8}
+  '': 0,
+  'object_action_lane_change_right': 1,
+  'object_action_running': 2,
+  'object_action_lane_change_left': 3,
+  'object_action_parked': 4,
+  'object_action_standing': 5,
+  'object_action_right_turn': 6,
+  'object_action_gliding_on_wheels': 7,
+  'object_action_loss_of_control': 8,
+  'object_action_u_turn': 9,
+  'object_action_sitting': 10,
+  'object_action_walking': 11,
+  'object_action_stopped': 12,
+  'object_action_left_turn': 13,
+  'object_action_reversing': 14,
+  'is_stationary': 15,
+  'object_action_driving_straight_forward': 16,
+  'object_action_abnormal_or_traffic_violation': 17,
+  'object_action_other_motion': 18
+}
 
 def main():
   SCENE_SPLITS['mini-val'] = SCENE_SPLITS['val']
@@ -122,7 +157,7 @@ def main():
           # image information in COCO format
           image_info = {'id': num_images,
                         'file_name': image_data['filename'],
-                        'calib': calib.tolist(), 
+                        'calib': calib.tolist(),
                         'video_id': num_videos,
                         'frame_id': frame_ids[sensor_name],
                         'sensor_id': SENSOR_ID[sensor_name],

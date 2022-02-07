@@ -28,9 +28,13 @@ def get_optimizer(opt, model):
 def main(opt):
   torch.manual_seed(opt.seed)
   torch.backends.cudnn.benchmark = not opt.not_cuda_benchmark and not opt.test
+
+  # make dataset
   Dataset = get_dataset(opt.dataset)
+  # update dataset configuration according to options
   opt = opts().update_dataset_info_and_set_heads(opt, Dataset)
   print(opt)
+  
   if not opt.not_set_cuda_env:
     os.environ['CUDA_VISIBLE_DEVICES'] = opt.gpus_str
   opt.device = torch.device('cuda' if opt.gpus[0] >= 0 else 'cpu')

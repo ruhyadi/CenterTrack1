@@ -1,4 +1,4 @@
-opencv-python==4.1.x
+opencv-python==4.1.1.26
 Cython
 numba
 progress
